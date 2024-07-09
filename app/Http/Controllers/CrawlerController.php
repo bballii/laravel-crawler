@@ -53,7 +53,9 @@ class CrawlerController extends Controller
                         }
 
                         $html = $dom->saveHTML($parentNode);
-                        if (!in_array($html, $results)) {
+
+                        // Use the HTML content as key to avoid duplicates
+                        if (!isset($results[$html])) {
                             // Get the tag name and attributes
                             $tagName = $parentNode->nodeName;
                             $attributes = [];
@@ -63,7 +65,7 @@ class CrawlerController extends Controller
                                 }
                             }
 
-                            $results[] = [
+                            $results[$html] = [
                                 'html' => $html,
                                 'tag' => $tagName,
                                 'attributes' => $attributes
@@ -71,6 +73,9 @@ class CrawlerController extends Controller
                         }
                     }
                 }
+
+                // Convert associative array to sequential array for JSON response
+                $results = array_values($results);
 
                 return response()->json(['matched' => $results], 200);
             } else {

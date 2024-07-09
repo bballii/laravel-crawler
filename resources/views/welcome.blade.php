@@ -26,11 +26,12 @@
                     <div class="mb-4">
                         <label for="site" class="block text-sm font-bold mb-2">Site</label>
                         <input type="text" id="site" class="w-full p-2 border border-gray-300 rounded">
+                        <span class="text-sm">Site URL Eg: qwerty.xyz.</span>
                     </div>
                     <div class="mb-4">
                         <label for="keyword" class="block text-sm font-bold mb-2">Keyword</label>
                         <input type="text" id="keyword" class="w-full p-2 border border-gray-300 rounded">
-                        <span class="text-sm">Add keywords separated with commas. Eg: slot, towing</span>
+                        <span class="text-sm">Add keywords separated with commas. Eg: cake, berry</span>
                     </div>
                     <button id="apiButton"
                         class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-300">
