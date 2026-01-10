@@ -20,13 +20,22 @@ class CrawlerController extends Controller
         $site = $request->get('site');
         $keywords = explode(',', $request->get('keywords'));
 
-        $response = file_get_contents("https://www.$site", false, stream_context_create($arrContextOptions));
+        $response = file_get_contents($site, false, stream_context_create($arrContextOptions));
         if ($response) {
             $keywords_exist = [];
+
             foreach ($keywords as $word) {
-                if (str_contains($response, str_replace(' ', '', $word))) {
+                // if (str_contains($response, " $word ")) {
+                //     $keywords_exist[] = $word;
+                // }
+
+                // $pattern = '#\b' . preg_quote($word, '#') . '\b#i';
+                $pattern = '/\b' . preg_quote($word, '/') . '\b/i';
+
+                if (preg_match($word, $pattern)) {
                     $keywords_exist[] = $word;
                 }
+
             }
 
             if (count($keywords_exist) > 0) {

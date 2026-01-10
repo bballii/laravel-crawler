@@ -26,7 +26,7 @@
                     <div class="mb-4">
                         <label for="site" class="block text-sm font-bold mb-2">Site</label>
                         <input type="text" id="site" class="w-full p-2 border border-gray-300 rounded">
-                        <span class="text-sm">Site URL Eg: qwerty.xyz.</span>
+                        <span class="text-sm">Add full URL. Eg: https://www.google.com.</span>
                     </div>
                     <div class="mb-4">
                         <label for="keyword" class="block text-sm font-bold mb-2">Keyword</label>
