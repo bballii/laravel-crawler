@@ -2,14 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApiKey;
+use App\Models\CrawlerHistory;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class CrawlerController extends Controller
 {
     public function startCrawler(Request $request)
     {
+        $startTime = microtime(true);
+        
+        $request->validate([
+            'site' => 'required|url',
+            'keywords' => 'required|string',
+        ]);
+
+        $user = auth()->user();
+        $apiKey = null;
+        $apiKeyId = null;
+
+        // Check if request came via API key
+        $apiKeyHeader = $request->header('X-API-Key') ?? $request->query('api_key');
+        if ($apiKeyHeader) {
+            $hashedKey = hash('sha256', $apiKeyHeader);
+            $apiKey = ApiKey::where('key', $hashedKey)->first();
+            if ($apiKey) {
+                $apiKeyId = $apiKey->id;
+                $user = $apiKey->user;
+            }
+        }
+
         $arrContextOptions = array(
             "ssl" => array(
                 "verify_peer" => false,
@@ -18,24 +43,37 @@ class CrawlerController extends Controller
         );
 
         $site = $request->get('site');
-        $keywords = explode(',', $request->get('keywords'));
+        $keywordsInput = $request->get('keywords');
+        $keywords = array_map('trim', explode(',', $keywordsInput));
+        $keywords = array_filter($keywords); // Remove empty values
 
-        $response = file_get_contents($site, false, stream_context_create($arrContextOptions));
+        $status = 'success';
+        $matchesCount = 0;
+        $responseMessage = null;
+        $responseData = null;
+
+        if (empty($keywords)) {
+            $executionTime = (int)((microtime(true) - $startTime) * 1000);
+            $this->logHistory($user, $apiKeyId, $site, $keywords, 0, 'error', $executionTime, 'Please provide at least one keyword');
+            return response()->json(['message' => 'Please provide at least one keyword'], 400);
+        }
+
+        $response = @file_get_contents($site, false, stream_context_create($arrContextOptions));
+        if ($response === false) {
+            $executionTime = (int)((microtime(true) - $startTime) * 1000);
+            $this->logHistory($user, $apiKeyId, $site, $keywords, 0, 'error', $executionTime, 'Failed to fetch the website. Please check the URL.');
+            return response()->json(['message' => 'Failed to fetch the website. Please check the URL.'], 400);
+        }
+
         if ($response) {
             $keywords_exist = [];
 
             foreach ($keywords as $word) {
-                // if (str_contains($response, " $word ")) {
-                //     $keywords_exist[] = $word;
-                // }
-
-                // $pattern = '#\b' . preg_quote($word, '#') . '\b#i';
                 $pattern = '/\b' . preg_quote($word, '/') . '\b/i';
 
-                if (preg_match($word, $pattern)) {
+                if (preg_match($pattern, $response)) {
                     $keywords_exist[] = $word;
                 }
-
             }
 
             if (count($keywords_exist) > 0) {
@@ -85,13 +123,43 @@ class CrawlerController extends Controller
 
                 // Convert associative array to sequential array for JSON response
                 $results = array_values($results);
+                $matchesCount = count($results);
+                $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                
+                $this->logHistory($user, $apiKeyId, $site, $keywords, $matchesCount, 'success', $executionTime, null);
 
                 return response()->json(['matched' => $results], 200);
             } else {
-                return response()->json(['message' => "keyword not found on the page $site"], 404);
+                $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                $message = "No keywords found on the page $site";
+                $this->logHistory($user, $apiKeyId, $site, $keywords, 0, 'error', $executionTime, $message);
+                return response()->json(['message' => $message], 404);
             }
         }
 
-        dd("NULL");
+        $executionTime = (int)((microtime(true) - $startTime) * 1000);
+        $this->logHistory($user, $apiKeyId, $site, $keywords, 0, 'error', $executionTime, 'Failed to process the website');
+        return response()->json(['message' => 'Failed to process the website'], 500);
+    }
+
+    /**
+     * Log crawler history.
+     */
+    private function logHistory($user, $apiKeyId, $site, $keywords, $matchesCount, $status, $executionTime, $responseMessage)
+    {
+        if (!$user) {
+            return; // Don't log if no user
+        }
+
+        CrawlerHistory::create([
+            'user_id' => $user->id,
+            'api_key_id' => $apiKeyId,
+            'site' => $site,
+            'keywords' => $keywords,
+            'matches_count' => $matchesCount,
+            'status' => $status,
+            'execution_time' => $executionTime,
+            'response_message' => $responseMessage,
+        ]);
     }
 }
