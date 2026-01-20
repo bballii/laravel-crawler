@@ -1,0 +1,25 @@
+# Development override file
+# Use this for easier code updates without rebuilding images
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+version: '3.8'
+
+services:
+  app:
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+
+  horizon:
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+
+  nginx:
+    volumes:
+      - ./:/var/www/html
+
